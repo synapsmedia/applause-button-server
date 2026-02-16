@@ -1,6 +1,9 @@
 services:
   app:
-    build: .
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
     ports:
       - "3000:3000"
     environment:
@@ -8,6 +11,7 @@ services:
       - PORT=3000
       - CORS_ORIGIN=*
       - TRUST_PROXY=1
+    command: sh -c "npm install && npm run dev"
     depends_on:
       - redis
     restart: unless-stopped

@@ -77,7 +77,7 @@ npm install
 npm run dev
 ```
 
-Requires a running Redis instance (or use `docker compose up redis`).
+Requires a running Redis instance (or use `docker compose up redis`). Or use `docker compose -f docker-compose.dev.yml up` to run the app in a container.
 
 ### Testing
 

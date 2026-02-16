@@ -13,6 +13,8 @@ router.get("/", (req, res) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Applause Button Server</title>
+  <link rel="stylesheet" href="https://unpkg.com/applause-button/dist/applause-button.css" />
+  <script src="https://unpkg.com/applause-button/dist/applause-button.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -57,7 +59,7 @@ router.get("/", (req, res) => {
 
     <div class="demo">
       <p>Try it out:</p>
-      <applause-button style="width: 58px; height: 58px;" url="${baseUrl}/demo" />
+      <applause-button style="width: 58px; height: 58px;" api="${baseUrl}" url="${baseUrl}/demo2" />
     </div>
 
     <h2>Usage</h2>
@@ -83,11 +85,6 @@ router.get("/", (req, res) => {
     </p>
   </div>
 
-  <link rel="stylesheet" href="https://unpkg.com/applause-button/dist/applause-button.css" />
-  <script src="https://unpkg.com/applause-button/dist/applause-button.js"></script>
-  <script>
-    document.querySelector("applause-button").setAttribute("api", "${baseUrl}");
-  </script>
 </body>
 </html>`);
 });

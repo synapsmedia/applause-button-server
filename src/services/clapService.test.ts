@@ -2,8 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockRedis = vi.hoisted(() => ({
   hget: vi.fn(),
-  hset: vi.fn(),
   hincrby: vi.fn(),
+  sismember: vi.fn(),
+  sadd: vi.fn(),
+  expire: vi.fn(),
   pipeline: vi.fn(),
 }));
 
@@ -32,54 +34,70 @@ describe("updateClaps", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("increments claps for new IP", async () => {
-    mockRedis.hget.mockResolvedValue(null);
+    mockRedis.sismember.mockResolvedValue(0);
     mockRedis.hincrby.mockResolvedValue(5);
-    mockRedis.hset.mockResolvedValue("OK");
+    mockRedis.sadd.mockResolvedValue(1);
+    mockRedis.expire.mockResolvedValue(1);
 
     expect(await updateClaps("foo.com", 5, "1.2.3.4")).toBe(5);
     expect(mockRedis.hincrby).toHaveBeenCalledWith("applause:foo.com", "claps", 5);
-    expect(mockRedis.hset).toHaveBeenCalledWith("applause:foo.com", "lastIp", "1.2.3.4");
+    expect(mockRedis.sadd).toHaveBeenCalledWith("applause:ips:foo.com", expect.any(String));
+    expect(mockRedis.expire).toHaveBeenCalledWith("applause:ips:foo.com", 86400);
+  });
+
+  it("stores hashed IP, not raw IP", async () => {
+    mockRedis.sismember.mockResolvedValue(0);
+    mockRedis.hincrby.mockResolvedValue(5);
+    mockRedis.sadd.mockResolvedValue(1);
+    mockRedis.expire.mockResolvedValue(1);
+
+    await updateClaps("foo.com", 5, "1.2.3.4");
+    const storedHash = mockRedis.sadd.mock.calls[0][1];
+    expect(storedHash).not.toBe("1.2.3.4");
+    expect(storedHash).toMatch(/^[a-f0-9]{64}$/);
   });
 
   it("blocks duplicate claps from same IP", async () => {
-    mockRedis.hget
-      .mockResolvedValueOnce("1.2.3.4") // lastIp
-      .mockResolvedValueOnce("10"); // current claps
+    mockRedis.sismember.mockResolvedValue(1);
+    mockRedis.hget.mockResolvedValue("10");
 
     expect(await updateClaps("foo.com", 5, "1.2.3.4")).toBe(10);
     expect(mockRedis.hincrby).not.toHaveBeenCalled();
+    expect(mockRedis.sadd).not.toHaveBeenCalled();
   });
 
   it("returns 0 when same IP and no claps stored", async () => {
-    mockRedis.hget
-      .mockResolvedValueOnce("1.2.3.4") // lastIp
-      .mockResolvedValueOnce(null); // no claps
+    mockRedis.sismember.mockResolvedValue(1);
+    mockRedis.hget.mockResolvedValue(null);
 
     expect(await updateClaps("foo.com", 5, "1.2.3.4")).toBe(0);
   });
 
   it("allows claps from different IP", async () => {
-    mockRedis.hget.mockResolvedValueOnce("1.2.3.4");
+    mockRedis.sismember.mockResolvedValue(0);
     mockRedis.hincrby.mockResolvedValue(15);
-    mockRedis.hset.mockResolvedValue("OK");
+    mockRedis.sadd.mockResolvedValue(1);
+    mockRedis.expire.mockResolvedValue(1);
 
     expect(await updateClaps("foo.com", 5, "5.6.7.8")).toBe(15);
     expect(mockRedis.hincrby).toHaveBeenCalled();
   });
 
   it("clamps clap increment to max 10", async () => {
-    mockRedis.hget.mockResolvedValue(null);
+    mockRedis.sismember.mockResolvedValue(0);
     mockRedis.hincrby.mockResolvedValue(10);
-    mockRedis.hset.mockResolvedValue("OK");
+    mockRedis.sadd.mockResolvedValue(1);
+    mockRedis.expire.mockResolvedValue(1);
 
     await updateClaps("foo.com", 100, "1.2.3.4");
     expect(mockRedis.hincrby).toHaveBeenCalledWith("applause:foo.com", "claps", 10);
   });
 
   it("clamps negative values to 1", async () => {
-    mockRedis.hget.mockResolvedValue(null);
+    mockRedis.sismember.mockResolvedValue(0);
     mockRedis.hincrby.mockResolvedValue(1);
-    mockRedis.hset.mockResolvedValue("OK");
+    mockRedis.sadd.mockResolvedValue(1);
+    mockRedis.expire.mockResolvedValue(1);
 
     await updateClaps("foo.com", -5, "1.2.3.4");
     expect(mockRedis.hincrby).toHaveBeenCalledWith("applause:foo.com", "claps", 1);
